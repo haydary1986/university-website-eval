@@ -1,8 +1,11 @@
 package main
 
 import (
+	"io/fs"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 
 	"website-eval-system/config"
 	"website-eval-system/database"
@@ -136,6 +139,37 @@ func main() {
 			ai.POST("/suggest-improvements/:id", aiHandler.SuggestImprovements)
 			ai.POST("/compare-universities", aiHandler.CompareUniversities)
 		}
+	}
+
+	// Serve frontend static files (for production single-container deployment)
+	staticDir := os.Getenv("STATIC_DIR")
+	if staticDir == "" {
+		staticDir = "./static"
+	}
+	if _, err := os.Stat(staticDir); err == nil {
+		staticFS := http.Dir(staticDir)
+		fileServer := http.FileServer(staticFS)
+
+		r.NoRoute(func(c *gin.Context) {
+			path := c.Request.URL.Path
+
+			// If it's an API route, return 404
+			if strings.HasPrefix(path, "/api/") {
+				c.JSON(404, gin.H{"error": "not found"})
+				return
+			}
+
+			// Try to serve the file directly
+			if f, err := fs.Stat(os.DirFS(staticDir), strings.TrimPrefix(path, "/")); err == nil && !f.IsDir() {
+				fileServer.ServeHTTP(c.Writer, c.Request)
+				return
+			}
+
+			// SPA fallback: serve index.html for all other routes
+			c.Request.URL.Path = "/"
+			fileServer.ServeHTTP(c.Writer, c.Request)
+		})
+		log.Printf("Serving frontend from %s", staticDir)
 	}
 
 	log.Printf("Server starting on port %s", cfg.ServerPort)

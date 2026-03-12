@@ -28,39 +28,34 @@ ENV VITE_API_URL=/api
 RUN npm run build
 
 # ============================================
-# Stage 3: Final Runtime
+# Stage 3: Final Runtime (Go serves everything)
 # ============================================
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates tzdata sqlite-libs nginx
+RUN apk add --no-cache ca-certificates tzdata sqlite-libs
 
 WORKDIR /app
 
 # Copy backend binary
 COPY --from=backend-builder /app/backend/server .
 
-# Copy frontend build to nginx
-COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
-
-# Copy nginx config
-COPY frontend/nginx.conf /etc/nginx/http.d/default.conf
+# Copy frontend build - Go will serve these as static files
+COPY --from=frontend-builder /app/frontend/dist ./static
 
 # Create directories
 RUN mkdir -p /app/data /app/uploads
-
-# Startup script
-RUN printf '#!/bin/sh\nnginx\nexec /app/server\n' > /app/start.sh && chmod +x /app/start.sh
 
 # Environment
 ENV GIN_MODE=release
 ENV DB_PATH=/app/data/eval.db
 ENV UPLOAD_PATH=/app/uploads
+ENV STATIC_DIR=/app/static
 ENV JWT_SECRET=change-this-in-production
 ENV PORT=8080
 
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -qO- http://localhost:8080/api/health || exit 1
 
-CMD ["/app/start.sh"]
+CMD ["./server"]
