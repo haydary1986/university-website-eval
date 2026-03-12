@@ -11,7 +11,7 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
 COPY backend/ .
-RUN CGO_ENABLED=1 GOOS=linux go build -o server .
+RUN CGO_ENABLED=1 CGO_CFLAGS="-D_LARGEFILE64_SOURCE" GOOS=linux go build -o server .
 
 # ============================================
 # Stage 2: Build Vue Frontend
