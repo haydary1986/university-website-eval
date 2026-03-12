@@ -1,0 +1,38 @@
+{
+  "name": "نظام تقييم المواقع الجامعية",
+  "description": "University Website Evaluation System - Ministry of Higher Education",
+  "type": "docker-compose",
+  "build": {
+    "dockerfile": "docker-compose.yml"
+  },
+  "settings": {
+    "is_static": false,
+    "port": 3000
+  },
+  "environment": [
+    {
+      "key": "JWT_SECRET",
+      "value": "",
+      "is_required": true,
+      "description": "JWT Secret Key for authentication"
+    },
+    {
+      "key": "DEEPSEEK_API_KEY",
+      "value": "",
+      "is_required": false,
+      "description": "DeepSeek API Key for AI analysis"
+    },
+    {
+      "key": "GEMINI_API_KEY",
+      "value": "",
+      "is_required": false,
+      "description": "Google Gemini API Key for AI analysis"
+    },
+    {
+      "key": "APP_PORT",
+      "value": "3000",
+      "is_required": false,
+      "description": "Application port"
+    }
+  ]
+}

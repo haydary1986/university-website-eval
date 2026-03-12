@@ -1,0 +1,36 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Database
+*.db
+*.sqlite
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Go
+backend/website-eval-system
+backend/tmp/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Original source files
+*.xls
+*.xlsx
+*.docx
