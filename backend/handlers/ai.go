@@ -20,6 +20,65 @@ func NewAIHandler(aiService *services.AIService) *AIHandler {
 	return &AIHandler{AIService: aiService}
 }
 
+// getAIProvider returns an AI provider, preferring DB settings over env vars
+func getAIProvider(svc *services.AIService, name string) (services.AIProvider, error) {
+	dsKey, dsURL, gKey, gURL := GetAISettings()
+
+	switch name {
+	case "deepseek":
+		key := dsKey
+		if key == "" {
+			key = svc.Config.DeepSeekKey
+		}
+		if key == "" {
+			return nil, fmt.Errorf("مفتاح DeepSeek API غير مُعدّ")
+		}
+		url := dsURL
+		if url == "" {
+			url = svc.Config.DeepSeekURL
+		}
+		return &services.DeepSeekClient{APIKey: key, BaseURL: url}, nil
+	case "gemini":
+		key := gKey
+		if key == "" {
+			key = svc.Config.GeminiKey
+		}
+		if key == "" {
+			return nil, fmt.Errorf("مفتاح Gemini API غير مُعدّ")
+		}
+		url := gURL
+		if url == "" {
+			url = svc.Config.GeminiURL
+		}
+		return &services.GeminiClient{APIKey: key, BaseURL: url}, nil
+	default:
+		// Try deepseek first, then gemini
+		if dsKey != "" || svc.Config.DeepSeekKey != "" {
+			key := dsKey
+			if key == "" {
+				key = svc.Config.DeepSeekKey
+			}
+			url := dsURL
+			if url == "" {
+				url = svc.Config.DeepSeekURL
+			}
+			return &services.DeepSeekClient{APIKey: key, BaseURL: url}, nil
+		}
+		if gKey != "" || svc.Config.GeminiKey != "" {
+			key := gKey
+			if key == "" {
+				key = svc.Config.GeminiKey
+			}
+			url := gURL
+			if url == "" {
+				url = svc.Config.GeminiURL
+			}
+			return &services.GeminiClient{APIKey: key, BaseURL: url}, nil
+		}
+		return nil, fmt.Errorf("لم يتم تكوين أي مزود ذكاء اصطناعي")
+	}
+}
+
 func (h *AIHandler) AnalyzeSubmission(c *gin.Context) {
 	id := c.Param("id")
 
@@ -37,7 +96,7 @@ func (h *AIHandler) AnalyzeSubmission(c *gin.Context) {
 	var req models.AIAnalysisRequest
 	c.ShouldBindJSON(&req)
 
-	provider, err := h.AIService.GetProvider(req.Provider)
+	provider, err := getAIProvider(h.AIService, req.Provider)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -76,7 +135,7 @@ func (h *AIHandler) SuggestImprovements(c *gin.Context) {
 	var req models.AIAnalysisRequest
 	c.ShouldBindJSON(&req)
 
-	provider, err := h.AIService.GetProvider(req.Provider)
+	provider, err := getAIProvider(h.AIService, req.Provider)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -109,7 +168,7 @@ func (h *AIHandler) CompareUniversities(c *gin.Context) {
 		return
 	}
 
-	provider, err := h.AIService.GetProvider(req.Provider)
+	provider, err := getAIProvider(h.AIService, req.Provider)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

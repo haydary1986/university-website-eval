@@ -89,6 +89,7 @@ const menuItems = computed(() => {
       { title: 'السنوات الدراسية', icon: 'mdi-calendar-range', to: '/admin/academic-years' },
       { title: 'مركز الأمان', icon: 'mdi-shield-lock', to: '/admin/security' },
       { title: 'سجل العمليات', icon: 'mdi-history', to: '/admin/audit-logs' },
+      { title: 'الإعدادات', icon: 'mdi-cog', to: '/admin/settings' },
     )
   }
   return items

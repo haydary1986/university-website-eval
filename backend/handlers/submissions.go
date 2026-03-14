@@ -84,6 +84,12 @@ func (h *SubmissionHandler) Get(c *gin.Context) {
 }
 
 func (h *SubmissionHandler) Create(c *gin.Context) {
+	// Check if submissions are open
+	if !GetSubmissionsOpen() {
+		c.JSON(http.StatusForbidden, gin.H{"error": "عملية التقديم مغلقة حالياً"})
+		return
+	}
+
 	user, _ := c.Get("user")
 	u := user.(models.User)
 
@@ -200,6 +206,12 @@ func (h *SubmissionHandler) Update(c *gin.Context) {
 }
 
 func (h *SubmissionHandler) Submit(c *gin.Context) {
+	// Check if submissions are open
+	if !GetSubmissionsOpen() {
+		c.JSON(http.StatusForbidden, gin.H{"error": "عملية التقديم مغلقة حالياً"})
+		return
+	}
+
 	id := c.Param("id")
 
 	var submission models.Submission

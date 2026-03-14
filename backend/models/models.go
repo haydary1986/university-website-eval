@@ -283,3 +283,35 @@ type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=8"`
 }
+
+// System Settings
+type SystemSetting struct {
+	Key   string `json:"key" gorm:"primaryKey"`
+	Value string `json:"value"`
+}
+
+type SystemSettingsResponse struct {
+	SiteTitle       string `json:"site_title"`
+	SiteDescription string `json:"site_description"`
+	SubmissionsOpen bool   `json:"submissions_open"`
+	DeepSeekAPIKey  string `json:"deepseek_api_key"`
+	DeepSeekURL     string `json:"deepseek_url"`
+	GeminiAPIKey    string `json:"gemini_api_key"`
+	GeminiURL       string `json:"gemini_url"`
+}
+
+type UpdateSettingsRequest struct {
+	SiteTitle       *string `json:"site_title"`
+	SiteDescription *string `json:"site_description"`
+	SubmissionsOpen *bool   `json:"submissions_open"`
+	DeepSeekAPIKey  *string `json:"deepseek_api_key"`
+	DeepSeekURL     *string `json:"deepseek_url"`
+	GeminiAPIKey    *string `json:"gemini_api_key"`
+	GeminiURL       *string `json:"gemini_url"`
+}
+
+type TestAIRequest struct {
+	Provider string `json:"provider" binding:"required"`
+	APIKey   string `json:"api_key" binding:"required"`
+	BaseURL  string `json:"base_url"`
+}

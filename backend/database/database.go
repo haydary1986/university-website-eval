@@ -35,6 +35,7 @@ func Init(dbPath string) {
 		&models.LoginAttempt{},
 		&models.BlockedIP{},
 		&models.ActiveSession{},
+		&models.SystemSetting{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)

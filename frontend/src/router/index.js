@@ -20,6 +20,7 @@ const routes = [
       { path: 'admin/academic-years', name: 'academic-years', component: () => import('../views/AcademicYearView.vue'), meta: { superAdmin: true } },
       { path: 'admin/audit-logs', name: 'audit-logs', component: () => import('../views/AuditLogView.vue'), meta: { superAdmin: true } },
       { path: 'admin/security', name: 'security', component: () => import('../views/SecurityView.vue'), meta: { superAdmin: true } },
+      { path: 'admin/settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { superAdmin: true } },
       { path: 'stats', name: 'stats', component: () => import('../views/StatsView.vue'), meta: { adminOnly: true } },
       { path: 'ai-analysis', name: 'ai-analysis', component: () => import('../views/AIAnalysisView.vue'), meta: { adminOnly: true } },
     ]

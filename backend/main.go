@@ -41,6 +41,7 @@ func main() {
 	adminHandler := handlers.NewAdminHandler()
 	statsHandler := handlers.NewStatsHandler()
 	aiHandler := handlers.NewAIHandler(aiService)
+	settingsHandler := handlers.NewSettingsHandler()
 
 	// Setup router
 	r := gin.Default()
@@ -60,6 +61,9 @@ func main() {
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	// Public settings (site title, description for SEO)
+	r.GET("/api/settings/public", settingsHandler.GetPublicSettings)
 
 	// Public routes
 	api := r.Group("/api")
@@ -125,6 +129,15 @@ func main() {
 
 			// Audit logs (super_admin only)
 			admin.GET("/audit-logs", middleware.RoleRequired("super_admin"), adminHandler.ListAuditLogs)
+
+			// Settings (super_admin only)
+			settings := admin.Group("/settings")
+			settings.Use(middleware.RoleRequired("super_admin"))
+			{
+				settings.GET("", settingsHandler.GetSettings)
+				settings.PUT("", settingsHandler.UpdateSettings)
+				settings.POST("/test-ai", settingsHandler.TestAI)
+			}
 
 			// Security management (super_admin only)
 			security := admin.Group("/security")

@@ -100,6 +100,12 @@ export default {
   getUniversityProfile: (id, params) => api.get(`/stats/university-profile/${id}`, { params }),
   getStatsComparison: (id, params) => api.get(`/stats/comparison/${id}`, { params }),
 
+  // Settings
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (data) => api.put('/admin/settings', data),
+  testAI: (data) => api.post('/admin/settings/test-ai', data),
+  getPublicSettings: () => axios.get((import.meta.env.VITE_API_URL || '/api') + '/settings/public'),
+
   // AI
   analyzeSubmission: (id, provider) => api.post(`/ai/analyze-submission/${id}`, { provider }),
   suggestImprovements: (id, provider) => api.post(`/ai/suggest-improvements/${id}`, { provider }),
