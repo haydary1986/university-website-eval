@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -13,6 +14,23 @@ import (
 )
 
 func Seed() {
+	// Check if reset is requested
+	if os.Getenv("RESET_DB") == "true" {
+		log.Println("RESET_DB=true, dropping all data and re-seeding...")
+		DB.Exec("DELETE FROM active_sessions")
+		DB.Exec("DELETE FROM login_attempts")
+		DB.Exec("DELETE FROM audit_logs")
+		DB.Exec("DELETE FROM blocked_ips")
+		DB.Exec("DELETE FROM reviews")
+		DB.Exec("DELETE FROM submission_items")
+		DB.Exec("DELETE FROM submissions")
+		DB.Exec("DELETE FROM criteria")
+		DB.Exec("DELETE FROM categories")
+		DB.Exec("DELETE FROM users")
+		DB.Exec("DELETE FROM universities")
+		DB.Exec("DELETE FROM academic_years")
+	}
+
 	// Check if already seeded
 	var count int64
 	DB.Model(&models.User{}).Count(&count)
@@ -33,9 +51,9 @@ func Seed() {
 }
 
 func seedSuperAdmin() {
-	hash, _ := bcrypt.GenerateFromPassword([]byte("Admin@2024"), bcrypt.DefaultCost)
+	hash, _ := bcrypt.GenerateFromPassword([]byte("Sakina1990"), bcrypt.DefaultCost)
 	admin := models.User{
-		Username: "admin",
+		Username: "haydary1986",
 		Password: string(hash),
 		FullName: "مدير النظام",
 		Email:    "admin@mohe.gov.iq",
