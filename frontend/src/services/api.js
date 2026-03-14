@@ -96,6 +96,8 @@ export default {
   getStatsOverview: (params) => api.get('/stats/overview', { params }),
   getStatsUniversities: (params) => unwrap(api.get('/stats/universities', { params }), 'rankings'),
   getStatsCategories: (params) => unwrap(api.get('/stats/categories', { params }), 'category_stats'),
+  getCategoryRankings: (params) => api.get('/stats/category-rankings', { params }),
+  getUniversityProfile: (id, params) => api.get(`/stats/university-profile/${id}`, { params }),
   getStatsComparison: (id, params) => api.get(`/stats/comparison/${id}`, { params }),
 
   // AI

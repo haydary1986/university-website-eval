@@ -149,6 +149,8 @@ func main() {
 			stats.GET("/overview", statsHandler.Overview)
 			stats.GET("/universities", statsHandler.Universities)
 			stats.GET("/categories", statsHandler.Categories)
+			stats.GET("/category-rankings", statsHandler.CategoryRankings)
+			stats.GET("/university-profile/:universityId", statsHandler.UniversityProfile)
 			stats.GET("/comparison/:universityId", statsHandler.Comparison)
 		}
 
