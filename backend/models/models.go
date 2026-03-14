@@ -46,11 +46,23 @@ type User struct {
 	Email              string    `json:"email"`
 	Phone              string    `json:"phone"`
 	Role               string    `json:"role" gorm:"not null;default:'university'"` // super_admin, admin, university
+	MustChangePassword bool      `json:"must_change_password" gorm:"default:false"`
 	UniversityID       *uint     `json:"university_id"`
 	University         *University `json:"university,omitempty" gorm:"foreignKey:UniversityID"`
 	AssignedCategories JSONArray `json:"assigned_categories" gorm:"type:text"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+type AuditLog struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	UserID    uint      `json:"user_id" gorm:"not null"`
+	User      *User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Action    string    `json:"action" gorm:"not null"` // password_change, login, etc.
+	IPAddress string    `json:"ip_address"`
+	UserAgent string    `json:"user_agent"`
+	Details   string    `json:"details"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type University struct {
@@ -225,4 +237,9 @@ type AICompareRequest struct {
 	UniversityIDs []uint `json:"university_ids" binding:"required"`
 	AcademicYearID uint  `json:"academic_year_id" binding:"required"`
 	Provider       string `json:"provider"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=8"`
 }

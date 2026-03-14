@@ -1,7 +1,10 @@
 package database
 
 import (
+	"fmt"
 	"log"
+	"net/url"
+	"strings"
 	"time"
 
 	"website-eval-system/models"
@@ -24,6 +27,7 @@ func Seed() {
 	seedUniversities()
 	seedAcademicYears()
 	seedSuperAdmin()
+	seedUniversityUsers()
 
 	log.Println("Database seeded successfully!")
 }
@@ -354,4 +358,51 @@ func seedUniversities() {
 		}
 		DB.Create(&uni)
 	}
+}
+
+func seedUniversityUsers() {
+	defaultPassword := "University@2024"
+	hash, _ := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
+
+	var universities []models.University
+	DB.Find(&universities)
+
+	created := 0
+	for _, uni := range universities {
+		// Extract domain from website URL for email
+		email := "info@university.edu.iq"
+		if uni.Website != "" {
+			parsed, err := url.Parse(uni.Website)
+			if err == nil && parsed.Host != "" {
+				host := parsed.Host
+				host = strings.TrimPrefix(host, "www.")
+				email = fmt.Sprintf("info@%s", host)
+			}
+		}
+
+		// Generate username from university ID
+		username := fmt.Sprintf("uni_%d", uni.ID)
+
+		user := models.User{
+			Username:           username,
+			Password:           string(hash),
+			FullName:           uni.Name,
+			Email:              email,
+			Phone:              "0000",
+			Role:               "university",
+			MustChangePassword: true,
+			UniversityID:       &uni.ID,
+		}
+
+		// Update university contact info
+		DB.Model(&uni).Updates(map[string]interface{}{
+			"contact_email": email,
+			"contact_phone": "0000",
+		})
+
+		DB.Create(&user)
+		created++
+	}
+
+	log.Printf("Created %d university user accounts (default password: %s)", created, defaultPassword)
 }

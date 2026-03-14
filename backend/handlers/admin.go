@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -174,6 +175,43 @@ func (h *AdminHandler) AssignCategories(c *gin.Context) {
 
 	database.DB.Preload("University").First(&user, user.ID)
 	c.JSON(http.StatusOK, gin.H{"user": user})
+}
+
+// === Audit Logs ===
+
+func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
+	var logs []models.AuditLog
+	query := database.DB.Preload("User").Order("created_at DESC")
+
+	if action := c.Query("action"); action != "" {
+		query = query.Where("action = ?", action)
+	}
+	if userID := c.Query("user_id"); userID != "" {
+		query = query.Where("user_id = ?", userID)
+	}
+
+	// Pagination
+	page := 1
+	pageSize := 50
+	if p := c.Query("page"); p != "" {
+		fmt.Sscanf(p, "%d", &page)
+	}
+	if ps := c.Query("page_size"); ps != "" {
+		fmt.Sscanf(ps, "%d", &pageSize)
+	}
+
+	var total int64
+	database.DB.Model(&models.AuditLog{}).Count(&total)
+
+	offset := (page - 1) * pageSize
+	query.Offset(offset).Limit(pageSize).Find(&logs)
+
+	c.JSON(http.StatusOK, gin.H{
+		"logs":      logs,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
 }
 
 // === Submission Review ===

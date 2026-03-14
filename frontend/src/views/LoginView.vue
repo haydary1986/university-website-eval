@@ -43,8 +43,12 @@ async function handleLogin() {
   loading.value = true
   error.value = ''
   try {
-    await auth.login(username.value, password.value)
-    router.push('/dashboard')
+    const data = await auth.login(username.value, password.value)
+    if (data.must_change_password) {
+      router.push('/change-password')
+    } else {
+      router.push('/dashboard')
+    }
   } catch (e) {
     error.value = e.response?.data?.error || 'خطأ في تسجيل الدخول'
   } finally {

@@ -40,6 +40,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Log login action
+	database.DB.Create(&models.AuditLog{
+		UserID:    user.ID,
+		Action:    "login",
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+		Details:   "تسجيل دخول ناجح",
+	})
+
 	// Generate JWT
 	claims := &middleware.Claims{
 		UserID:   user.ID,
@@ -58,10 +67,56 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.LoginResponse{
-		Token: tokenStr,
-		User:  user,
+	c.JSON(http.StatusOK, gin.H{
+		"token":                tokenStr,
+		"user":                 user,
+		"must_change_password": user.MustChangePassword,
 	})
+}
+
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	var req models.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل"})
+		return
+	}
+
+	userID, _ := c.Get("user_id")
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Verify old password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "كلمة المرور الحالية غير صحيحة"})
+		return
+	}
+
+	// Hash new password
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	// Update password and clear must_change_password flag
+	database.DB.Model(&user).Updates(map[string]interface{}{
+		"password":             string(hash),
+		"must_change_password": false,
+	})
+
+	// Log password change
+	database.DB.Create(&models.AuditLog{
+		UserID:    user.ID,
+		Action:    "password_change",
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+		Details:   "تغيير كلمة المرور",
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "تم تغيير كلمة المرور بنجاح"})
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {

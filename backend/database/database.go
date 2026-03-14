@@ -31,6 +31,7 @@ func Init(dbPath string) {
 		&models.Submission{},
 		&models.SubmissionItem{},
 		&models.Review{},
+		&models.AuditLog{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)

@@ -37,6 +37,10 @@ export default {
   // Auth
   login: (data) => api.post('/auth/login', data),
   getMe: () => unwrap(api.get('/auth/me'), 'user'),
+  changePassword: (data) => api.post('/auth/change-password', data),
+
+  // Audit Logs
+  getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
 
   // Universities
   getUniversities: (params) => unwrap(api.get('/universities', { params }), 'universities'),

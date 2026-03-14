@@ -5,6 +5,7 @@ import api from '../services/api'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
   const token = ref(localStorage.getItem('token') || '')
+  const mustChangePassword = ref(false)
 
   const isAuthenticated = computed(() => !!token.value)
   const isSuperAdmin = computed(() => user.value?.role === 'super_admin')
@@ -16,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
     const res = await api.login({ username, password })
     token.value = res.data.token
     user.value = res.data.user
+    mustChangePassword.value = res.data.must_change_password || false
     localStorage.setItem('token', res.data.token)
     localStorage.setItem('user', JSON.stringify(res.data.user))
     return res.data
@@ -38,5 +40,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, token, isAuthenticated, isSuperAdmin, isAdmin, isUniversity, userRole, login, logout, fetchMe }
+  return { user, token, mustChangePassword, isAuthenticated, isSuperAdmin, isAdmin, isUniversity, userRole, login, logout, fetchMe }
 })

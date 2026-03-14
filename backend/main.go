@@ -77,6 +77,7 @@ func main() {
 		// Auth
 		protected.GET("/auth/me", authHandler.Me)
 		protected.POST("/auth/register", authHandler.Register)
+		protected.POST("/auth/change-password", authHandler.ChangePassword)
 
 		// Universities
 		protected.GET("/universities", universityHandler.List)
@@ -119,6 +120,9 @@ func main() {
 			admin.PUT("/users/:id", middleware.RoleRequired("super_admin"), adminHandler.UpdateUser)
 			admin.DELETE("/users/:id", middleware.RoleRequired("super_admin"), adminHandler.DeleteUser)
 			admin.PUT("/users/:id/assign-categories", middleware.RoleRequired("super_admin"), adminHandler.AssignCategories)
+
+			// Audit logs (super_admin only)
+			admin.GET("/audit-logs", middleware.RoleRequired("super_admin"), adminHandler.ListAuditLogs)
 		}
 
 		// Statistics
