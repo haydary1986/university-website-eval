@@ -76,17 +76,21 @@
         </v-card-title>
         <v-card-text>
           <!-- DeepSeek -->
-          <div class="text-subtitle-1 font-weight-bold mb-2">DeepSeek</div>
+          <div class="text-subtitle-1 font-weight-bold mb-2">
+            DeepSeek
+            <v-chip v-if="settings.has_deepseek_key" size="x-small" color="success" class="mr-2">مُفعّل</v-chip>
+            <v-chip v-else size="x-small" color="grey" class="mr-2">غير مُعدّ</v-chip>
+          </div>
           <v-row>
             <v-col cols="12" md="6">
               <v-text-field
-                v-model="settings.deepseek_api_key"
-                label="مفتاح API"
+                v-model="newDeepSeekKey"
+                label="مفتاح API جديد"
                 variant="outlined"
                 density="comfortable"
-                :type="showDeepSeekKey ? 'text' : 'password'"
-                :append-inner-icon="showDeepSeekKey ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="showDeepSeekKey = !showDeepSeekKey"
+                type="password"
+                :placeholder="settings.has_deepseek_key ? 'المفتاح محفوظ — اتركه فارغاً للإبقاء عليه' : 'أدخل مفتاح API'"
+                persistent-placeholder
               />
             </v-col>
             <v-col cols="12" md="6">
@@ -105,7 +109,7 @@
             size="small"
             class="mb-6"
             :loading="testingDeepSeek"
-            :disabled="!settings.deepseek_api_key"
+            :disabled="!newDeepSeekKey && !settings.has_deepseek_key"
             @click="testProvider('deepseek')"
           >
             <v-icon start>mdi-connection</v-icon>
@@ -118,17 +122,21 @@
           <v-divider class="mb-4" />
 
           <!-- Gemini -->
-          <div class="text-subtitle-1 font-weight-bold mb-2">Gemini</div>
+          <div class="text-subtitle-1 font-weight-bold mb-2">
+            Gemini
+            <v-chip v-if="settings.has_gemini_key" size="x-small" color="success" class="mr-2">مُفعّل</v-chip>
+            <v-chip v-else size="x-small" color="grey" class="mr-2">غير مُعدّ</v-chip>
+          </div>
           <v-row>
             <v-col cols="12" md="6">
               <v-text-field
-                v-model="settings.gemini_api_key"
-                label="مفتاح API"
+                v-model="newGeminiKey"
+                label="مفتاح API جديد"
                 variant="outlined"
                 density="comfortable"
-                :type="showGeminiKey ? 'text' : 'password'"
-                :append-inner-icon="showGeminiKey ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="showGeminiKey = !showGeminiKey"
+                type="password"
+                :placeholder="settings.has_gemini_key ? 'المفتاح محفوظ — اتركه فارغاً للإبقاء عليه' : 'أدخل مفتاح API'"
+                persistent-placeholder
               />
             </v-col>
             <v-col cols="12" md="6">
@@ -146,7 +154,7 @@
             variant="tonal"
             size="small"
             :loading="testingGemini"
-            :disabled="!settings.gemini_api_key"
+            :disabled="!newGeminiKey && !settings.has_gemini_key"
             @click="testProvider('gemini')"
           >
             <v-icon start>mdi-connection</v-icon>
@@ -176,8 +184,8 @@ const saving = ref(false)
 const successMsg = ref('')
 const errorMsg = ref('')
 
-const showDeepSeekKey = ref(false)
-const showGeminiKey = ref(false)
+const newDeepSeekKey = ref('')
+const newGeminiKey = ref('')
 const testingDeepSeek = ref(false)
 const testingGemini = ref(false)
 const deepseekResult = ref(null)
@@ -187,16 +195,18 @@ const settings = ref({
   site_title: '',
   site_description: '',
   submissions_open: true,
-  deepseek_api_key: '',
   deepseek_url: '',
-  gemini_api_key: '',
   gemini_url: '',
+  has_deepseek_key: false,
+  has_gemini_key: false,
 })
 
 async function loadSettings() {
   try {
     const { data } = await api.getSettings()
     settings.value = data.settings
+    newDeepSeekKey.value = ''
+    newGeminiKey.value = ''
   } catch (e) {
     errorMsg.value = 'فشل في تحميل الإعدادات'
   } finally {
@@ -222,15 +232,24 @@ async function saveSettings(section) {
       }
     } else if (section === 'ai') {
       payload = {
-        deepseek_api_key: settings.value.deepseek_api_key,
         deepseek_url: settings.value.deepseek_url,
-        gemini_api_key: settings.value.gemini_api_key,
         gemini_url: settings.value.gemini_url,
+      }
+      // Only send key if user entered a new one
+      if (newDeepSeekKey.value) {
+        payload.deepseek_api_key = newDeepSeekKey.value
+      }
+      if (newGeminiKey.value) {
+        payload.gemini_api_key = newGeminiKey.value
       }
     }
 
     await api.updateSettings(payload)
     successMsg.value = 'تم حفظ الإعدادات بنجاح'
+    // Reload to get updated state
+    if (section === 'ai') {
+      await loadSettings()
+    }
   } catch (e) {
     errorMsg.value = 'فشل في حفظ الإعدادات: ' + (e.response?.data?.error || e.message)
   } finally {
@@ -249,9 +268,11 @@ async function testProvider(provider) {
   }
 
   try {
+    // Use new key if entered, otherwise test with saved key (send empty to use server-side)
+    const key = isDeepSeek ? newDeepSeekKey.value : newGeminiKey.value
     const { data } = await api.testAI({
       provider,
-      api_key: isDeepSeek ? settings.value.deepseek_api_key : settings.value.gemini_api_key,
+      api_key: key || '__use_saved__',
       base_url: isDeepSeek ? settings.value.deepseek_url : settings.value.gemini_url,
     })
 

@@ -22,7 +22,7 @@ func Load() *Config {
 		DeepSeekKey: getEnv("DEEPSEEK_API_KEY", ""),
 		GeminiKey:   getEnv("GEMINI_API_KEY", ""),
 		DeepSeekURL: getEnv("DEEPSEEK_URL", "https://api.deepseek.com/v1/chat/completions"),
-		GeminiURL:   getEnv("GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"),
+		GeminiURL:   getEnv("GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"),
 	}
 }
 

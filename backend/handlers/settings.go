@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"website-eval-system/database"
 	"website-eval-system/models"
@@ -9,6 +10,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// maskKey hides API key, showing only last 4 chars
+func maskKey(key string) string {
+	if len(key) <= 4 {
+		return strings.Repeat("*", len(key))
+	}
+	return strings.Repeat("*", len(key)-4) + key[len(key)-4:]
+}
 
 type SettingsHandler struct{}
 
@@ -30,14 +39,19 @@ func setSetting(key, value string) {
 
 // GetSettings returns all system settings (super_admin only)
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
+	dsKey := getSetting("deepseek_api_key", "")
+	gKey := getSetting("gemini_api_key", "")
+
 	resp := models.SystemSettingsResponse{
 		SiteTitle:       getSetting("site_title", "نظام تقييم جودة المواقع الالكترونية الجامعية"),
 		SiteDescription: getSetting("site_description", "نظام تقييم جودة المواقع الالكترونية للجامعات العراقية - وزارة التعليم العالي والبحث العلمي"),
 		SubmissionsOpen: getSetting("submissions_open", "true") == "true",
-		DeepSeekAPIKey:  getSetting("deepseek_api_key", ""),
+		DeepSeekAPIKey:  maskKey(dsKey),
 		DeepSeekURL:     getSetting("deepseek_url", "https://api.deepseek.com/v1/chat/completions"),
-		GeminiAPIKey:    getSetting("gemini_api_key", ""),
-		GeminiURL:       getSetting("gemini_url", "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"),
+		GeminiAPIKey:    maskKey(gKey),
+		GeminiURL:       getSetting("gemini_url", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"),
+		HasDeepSeekKey:  dsKey != "",
+		HasGeminiKey:    gKey != "",
 	}
 	c.JSON(http.StatusOK, gin.H{"settings": resp})
 }
@@ -98,19 +112,34 @@ func (h *SettingsHandler) TestAI(c *gin.Context) {
 
 	var provider services.AIProvider
 
+	// If key is __use_saved__, use the saved key from DB
+	apiKey := req.APIKey
+	if apiKey == "__use_saved__" {
+		dsKey, _, gKey, _ := GetAISettings()
+		if req.Provider == "deepseek" {
+			apiKey = dsKey
+		} else {
+			apiKey = gKey
+		}
+		if apiKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "لا يوجد مفتاح محفوظ", "success": false})
+			return
+		}
+	}
+
 	switch req.Provider {
 	case "deepseek":
 		baseURL := req.BaseURL
 		if baseURL == "" {
 			baseURL = "https://api.deepseek.com/v1/chat/completions"
 		}
-		provider = &services.DeepSeekClient{APIKey: req.APIKey, BaseURL: baseURL}
+		provider = &services.DeepSeekClient{APIKey: apiKey, BaseURL: baseURL}
 	case "gemini":
 		baseURL := req.BaseURL
 		if baseURL == "" {
-			baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+			baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 		}
-		provider = &services.GeminiClient{APIKey: req.APIKey, BaseURL: baseURL}
+		provider = &services.GeminiClient{APIKey: apiKey, BaseURL: baseURL}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "مزود غير معروف"})
 		return
@@ -135,6 +164,6 @@ func GetAISettings() (deepseekKey, deepseekURL, geminiKey, geminiURL string) {
 	deepseekKey = getSetting("deepseek_api_key", "")
 	deepseekURL = getSetting("deepseek_url", "https://api.deepseek.com/v1/chat/completions")
 	geminiKey = getSetting("gemini_api_key", "")
-	geminiURL = getSetting("gemini_url", "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")
+	geminiURL = getSetting("gemini_url", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent")
 	return
 }

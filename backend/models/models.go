@@ -298,6 +298,8 @@ type SystemSettingsResponse struct {
 	DeepSeekURL     string `json:"deepseek_url"`
 	GeminiAPIKey    string `json:"gemini_api_key"`
 	GeminiURL       string `json:"gemini_url"`
+	HasDeepSeekKey  bool   `json:"has_deepseek_key"`
+	HasGeminiKey    bool   `json:"has_gemini_key"`
 }
 
 type UpdateSettingsRequest struct {
