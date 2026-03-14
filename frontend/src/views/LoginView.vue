@@ -12,11 +12,26 @@
           </div>
 
           <v-form @submit.prevent="handleLogin" ref="form">
-            <v-text-field v-model="username" label="اسم المستخدم" prepend-inner-icon="mdi-account" :rules="[v => !!v || 'مطلوب']" class="mb-3" />
-            <v-text-field v-model="password" label="كلمة المرور" prepend-inner-icon="mdi-lock" :type="showPass ? 'text' : 'password'" :append-inner-icon="showPass ? 'mdi-eye-off' : 'mdi-eye'" @click:append-inner="showPass = !showPass" :rules="[v => !!v || 'مطلوب']" class="mb-3" />
-            <v-alert v-if="error" type="error" variant="tonal" class="mb-3" closable @click:close="error = ''">{{ error }}</v-alert>
-            <v-btn type="submit" color="primary" block size="large" :loading="loading" class="mb-2">تسجيل الدخول</v-btn>
+            <v-text-field v-model="username" label="اسم المستخدم" prepend-inner-icon="mdi-account" :rules="[v => !!v || 'مطلوب']" class="mb-3" :disabled="isBlocked" />
+            <v-text-field v-model="password" label="كلمة المرور" prepend-inner-icon="mdi-lock" :type="showPass ? 'text' : 'password'" :append-inner-icon="showPass ? 'mdi-eye-off' : 'mdi-eye'" @click:append-inner="showPass = !showPass" :rules="[v => !!v || 'مطلوب']" class="mb-3" :disabled="isBlocked" />
+
+            <v-alert v-if="error" :type="isBlocked ? 'warning' : 'error'" variant="tonal" class="mb-3" closable @click:close="error = ''">
+              <div>{{ error }}</div>
+              <div v-if="remainingAttempts !== null && remainingAttempts > 0" class="text-caption mt-1">
+                المحاولات المتبقية: <strong>{{ remainingAttempts }}</strong>
+              </div>
+            </v-alert>
+
+            <v-btn type="submit" color="primary" block size="large" :loading="loading" :disabled="isBlocked" class="mb-2">
+              <v-icon class="ml-1">mdi-login</v-icon>
+              تسجيل الدخول
+            </v-btn>
           </v-form>
+
+          <div class="text-center mt-4">
+            <v-icon size="small" color="success" class="ml-1">mdi-shield-check</v-icon>
+            <span class="text-caption text-medium-emphasis">محمي بنظام أمان متعدد الطبقات</span>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -35,6 +50,8 @@ const password = ref('')
 const showPass = ref(false)
 const loading = ref(false)
 const error = ref('')
+const isBlocked = ref(false)
+const remainingAttempts = ref(null)
 const form = ref(null)
 
 async function handleLogin() {
@@ -42,6 +59,8 @@ async function handleLogin() {
   if (!valid) return
   loading.value = true
   error.value = ''
+  isBlocked.value = false
+  remainingAttempts.value = null
   try {
     const data = await auth.login(username.value, password.value)
     if (data.must_change_password) {
@@ -50,7 +69,14 @@ async function handleLogin() {
       router.push('/dashboard')
     }
   } catch (e) {
-    error.value = e.response?.data?.error || 'خطأ في تسجيل الدخول'
+    const resp = e.response?.data
+    error.value = resp?.error || 'خطأ في تسجيل الدخول'
+    if (resp?.blocked) {
+      isBlocked.value = true
+    }
+    if (resp?.remaining_attempts !== undefined) {
+      remainingAttempts.value = resp.remaining_attempts
+    }
   } finally {
     loading.value = false
   }

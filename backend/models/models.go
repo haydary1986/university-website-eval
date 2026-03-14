@@ -39,29 +39,69 @@ func (j *JSONArray) Scan(value interface{}) error {
 }
 
 type User struct {
-	ID                 uint      `json:"id" gorm:"primaryKey"`
-	Username           string    `json:"username" gorm:"uniqueIndex;not null"`
-	Password           string    `json:"-" gorm:"not null"`
-	FullName           string    `json:"full_name"`
-	Email              string    `json:"email"`
-	Phone              string    `json:"phone"`
-	Role               string    `json:"role" gorm:"not null;default:'university'"` // super_admin, admin, university
-	MustChangePassword bool      `json:"must_change_password" gorm:"default:false"`
-	UniversityID       *uint     `json:"university_id"`
+	ID                 uint       `json:"id" gorm:"primaryKey"`
+	Username           string     `json:"username" gorm:"uniqueIndex;not null"`
+	Password           string     `json:"-" gorm:"not null"`
+	FullName           string     `json:"full_name"`
+	Email              string     `json:"email"`
+	Phone              string     `json:"phone"`
+	Role               string     `json:"role" gorm:"not null;default:'university'"` // super_admin, admin, university
+	MustChangePassword bool       `json:"must_change_password" gorm:"default:false"`
+	IsBlocked          bool       `json:"is_blocked" gorm:"default:false"`
+	BlockedUntil       *time.Time `json:"blocked_until"`
+	FailedAttempts     int        `json:"failed_attempts" gorm:"default:0"`
+	LastFailedAt       *time.Time `json:"last_failed_at"`
+	LastLoginAt        *time.Time `json:"last_login_at"`
+	LastLoginIP        string     `json:"last_login_ip"`
+	PasswordChangedAt  *time.Time `json:"password_changed_at"`
+	UniversityID       *uint      `json:"university_id"`
 	University         *University `json:"university,omitempty" gorm:"foreignKey:UniversityID"`
-	AssignedCategories JSONArray `json:"assigned_categories" gorm:"type:text"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	AssignedCategories JSONArray  `json:"assigned_categories" gorm:"type:text"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+}
+
+type LoginAttempt struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Username  string    `json:"username" gorm:"index;not null"`
+	UserID    *uint     `json:"user_id"`
+	User      *User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	IPAddress string    `json:"ip_address" gorm:"index"`
+	UserAgent string    `json:"user_agent"`
+	Success   bool      `json:"success" gorm:"default:false"`
+	Reason    string    `json:"reason"` // success, invalid_password, user_not_found, account_blocked
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type AuditLog struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	UserID    uint      `json:"user_id" gorm:"not null"`
 	User      *User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	Action    string    `json:"action" gorm:"not null"` // password_change, login, etc.
+	Action    string    `json:"action" gorm:"not null"` // password_change, login, login_failed, account_blocked, account_unblocked, etc.
 	IPAddress string    `json:"ip_address"`
 	UserAgent string    `json:"user_agent"`
 	Details   string    `json:"details"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type BlockedIP struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	IPAddress string    `json:"ip_address" gorm:"uniqueIndex;not null"`
+	Reason    string    `json:"reason"`
+	BlockedBy uint      `json:"blocked_by"`
+	Admin     *User     `json:"admin,omitempty" gorm:"foreignKey:BlockedBy"`
+	ExpiresAt *time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ActiveSession struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	UserID    uint      `json:"user_id" gorm:"index;not null"`
+	User      *User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	TokenHash string    `json:"-" gorm:"uniqueIndex;not null"`
+	IPAddress string    `json:"ip_address"`
+	UserAgent string    `json:"user_agent"`
+	ExpiresAt time.Time `json:"expires_at"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

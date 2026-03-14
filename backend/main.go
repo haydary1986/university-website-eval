@@ -78,6 +78,8 @@ func main() {
 		protected.GET("/auth/me", authHandler.Me)
 		protected.POST("/auth/register", authHandler.Register)
 		protected.POST("/auth/change-password", authHandler.ChangePassword)
+		protected.POST("/auth/logout", authHandler.Logout)
+		protected.GET("/auth/sessions", authHandler.GetActiveSessions)
 
 		// Universities
 		protected.GET("/universities", universityHandler.List)
@@ -123,6 +125,22 @@ func main() {
 
 			// Audit logs (super_admin only)
 			admin.GET("/audit-logs", middleware.RoleRequired("super_admin"), adminHandler.ListAuditLogs)
+
+			// Security management (super_admin only)
+			security := admin.Group("/security")
+			security.Use(middleware.RoleRequired("super_admin"))
+			{
+				security.GET("/overview", adminHandler.SecurityOverview)
+				security.GET("/login-attempts", adminHandler.ListLoginAttempts)
+				security.PUT("/users/:id/block", adminHandler.BlockUser)
+				security.PUT("/users/:id/unblock", adminHandler.UnblockUser)
+				security.GET("/blocked-ips", adminHandler.ListBlockedIPs)
+				security.POST("/block-ip", adminHandler.BlockIP)
+				security.DELETE("/unblock-ip/:ip", adminHandler.UnblockIP)
+				security.GET("/sessions", adminHandler.ListAllSessions)
+				security.DELETE("/sessions/:id", adminHandler.TerminateSession)
+				security.DELETE("/users/:id/sessions", adminHandler.TerminateUserSessions)
+			}
 		}
 
 		// Statistics

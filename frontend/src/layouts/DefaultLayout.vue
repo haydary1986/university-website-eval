@@ -87,6 +87,7 @@ const menuItems = computed(() => {
     items.push(
       { title: 'إدارة المستخدمين', icon: 'mdi-account-group', to: '/admin/users' },
       { title: 'السنوات الدراسية', icon: 'mdi-calendar-range', to: '/admin/academic-years' },
+      { title: 'مركز الأمان', icon: 'mdi-shield-lock', to: '/admin/security' },
       { title: 'سجل العمليات', icon: 'mdi-history', to: '/admin/audit-logs' },
     )
   }

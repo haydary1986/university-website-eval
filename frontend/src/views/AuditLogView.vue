@@ -67,7 +67,16 @@ const filterUser = ref('')
 
 const actionOptions = [
   { title: 'تسجيل دخول', value: 'login' },
+  { title: 'محاولة دخول فاشلة', value: 'login_failed' },
+  { title: 'تسجيل خروج', value: 'logout' },
   { title: 'تغيير كلمة المرور', value: 'password_change' },
+  { title: 'حظر حساب', value: 'account_blocked' },
+  { title: 'إلغاء حظر حساب', value: 'account_unblocked' },
+  { title: 'حظر حساب يدوي', value: 'account_blocked_manual' },
+  { title: 'حظر IP', value: 'ip_blocked' },
+  { title: 'إلغاء حظر IP', value: 'ip_unblocked' },
+  { title: 'إنشاء مستخدم', value: 'user_created' },
+  { title: 'إنهاء جلسة', value: 'session_terminated' },
 ]
 
 const headers = [
@@ -89,12 +98,25 @@ const filteredLogs = computed(() => {
 })
 
 function actionColor(action) {
-  const colors = { login: 'blue', password_change: 'orange' }
+  const colors = {
+    login: 'success', login_failed: 'error', logout: 'blue',
+    password_change: 'orange', account_blocked: 'error', account_unblocked: 'success',
+    account_blocked_manual: 'error', ip_blocked: 'error', ip_unblocked: 'success',
+    user_created: 'info', session_terminated: 'warning',
+    all_sessions_terminated: 'warning',
+  }
   return colors[action] || 'grey'
 }
 
 function actionLabel(action) {
-  const labels = { login: 'تسجيل دخول', password_change: 'تغيير كلمة مرور' }
+  const labels = {
+    login: 'تسجيل دخول', login_failed: 'دخول فاشل', logout: 'تسجيل خروج',
+    password_change: 'تغيير كلمة مرور', account_blocked: 'حظر حساب (تلقائي)',
+    account_unblocked: 'إلغاء حظر حساب', account_blocked_manual: 'حظر حساب (يدوي)',
+    ip_blocked: 'حظر IP', ip_unblocked: 'إلغاء حظر IP',
+    user_created: 'إنشاء مستخدم', session_terminated: 'إنهاء جلسة',
+    all_sessions_terminated: 'إنهاء جميع الجلسات',
+  }
   return labels[action] || action
 }
 

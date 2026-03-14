@@ -38,9 +38,23 @@ export default {
   login: (data) => api.post('/auth/login', data),
   getMe: () => unwrap(api.get('/auth/me'), 'user'),
   changePassword: (data) => api.post('/auth/change-password', data),
+  logout: () => api.post('/auth/logout'),
+  getActiveSessions: () => api.get('/auth/sessions'),
 
   // Audit Logs
   getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
+
+  // Security
+  getSecurityOverview: () => api.get('/admin/security/overview'),
+  getLoginAttempts: (params) => api.get('/admin/security/login-attempts', { params }),
+  blockUser: (id, data) => api.put(`/admin/security/users/${id}/block`, data),
+  unblockUser: (id) => api.put(`/admin/security/users/${id}/unblock`),
+  getBlockedIPs: () => api.get('/admin/security/blocked-ips'),
+  blockIP: (data) => api.post('/admin/security/block-ip', data),
+  unblockIP: (ip) => api.delete(`/admin/security/unblock-ip/${ip}`),
+  getAllSessions: () => api.get('/admin/security/sessions'),
+  terminateSession: (id) => api.delete(`/admin/security/sessions/${id}`),
+  terminateUserSessions: (id) => api.delete(`/admin/security/users/${id}/sessions`),
 
   // Universities
   getUniversities: (params) => unwrap(api.get('/universities', { params }), 'universities'),

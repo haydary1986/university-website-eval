@@ -190,7 +190,6 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 		query = query.Where("user_id = ?", userID)
 	}
 
-	// Pagination
 	page := 1
 	pageSize := 50
 	if p := c.Query("page"); p != "" {
@@ -201,7 +200,7 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 	}
 
 	var total int64
-	database.DB.Model(&models.AuditLog{}).Count(&total)
+	query.Model(&models.AuditLog{}).Count(&total)
 
 	offset := (page - 1) * pageSize
 	query.Offset(offset).Limit(pageSize).Find(&logs)
@@ -211,6 +210,298 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 		"total":     total,
 		"page":      page,
 		"page_size": pageSize,
+	})
+}
+
+// === Security: Login Attempts ===
+
+func (h *AdminHandler) ListLoginAttempts(c *gin.Context) {
+	var attempts []models.LoginAttempt
+	query := database.DB.Preload("User").Order("created_at DESC")
+
+	if success := c.Query("success"); success != "" {
+		query = query.Where("success = ?", success == "true")
+	}
+	if ip := c.Query("ip"); ip != "" {
+		query = query.Where("ip_address = ?", ip)
+	}
+	if username := c.Query("username"); username != "" {
+		query = query.Where("username LIKE ?", "%"+username+"%")
+	}
+
+	page := 1
+	pageSize := 50
+	if p := c.Query("page"); p != "" {
+		fmt.Sscanf(p, "%d", &page)
+	}
+
+	var total int64
+	query.Model(&models.LoginAttempt{}).Count(&total)
+
+	offset := (page - 1) * pageSize
+	query.Offset(offset).Limit(pageSize).Find(&attempts)
+
+	c.JSON(http.StatusOK, gin.H{
+		"attempts": attempts,
+		"total":    total,
+		"page":     page,
+	})
+}
+
+// === Security: Block/Unblock Users ===
+
+func (h *AdminHandler) UnblockUser(c *gin.Context) {
+	id := c.Param("id")
+
+	var user models.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "المستخدم غير موجود"})
+		return
+	}
+
+	database.DB.Model(&user).Updates(map[string]interface{}{
+		"is_blocked":      false,
+		"blocked_until":   nil,
+		"failed_attempts": 0,
+		"last_failed_at":  nil,
+	})
+
+	adminID, _ := c.Get("user_id")
+	database.DB.Create(&models.AuditLog{
+		UserID:    adminID.(uint),
+		Action:    "account_unblocked",
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+		Details:   fmt.Sprintf("إلغاء حظر المستخدم: %s (ID: %s)", user.Username, id),
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "تم إلغاء حظر المستخدم بنجاح", "user": user})
+}
+
+func (h *AdminHandler) BlockUser(c *gin.Context) {
+	id := c.Param("id")
+
+	var user models.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "المستخدم غير موجود"})
+		return
+	}
+
+	// Prevent blocking yourself
+	currentUserID, _ := c.Get("user_id")
+	if user.ID == currentUserID.(uint) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "لا يمكنك حظر حسابك"})
+		return
+	}
+
+	var body struct {
+		Duration int    `json:"duration"` // minutes, 0 = permanent
+		Reason   string `json:"reason"`
+	}
+	c.ShouldBindJSON(&body)
+
+	updates := map[string]interface{}{
+		"is_blocked":      true,
+		"failed_attempts": 0,
+	}
+	if body.Duration > 0 {
+		blockUntil := time.Now().Add(time.Duration(body.Duration) * time.Minute)
+		updates["blocked_until"] = blockUntil
+	}
+
+	database.DB.Model(&user).Updates(updates)
+
+	adminID, _ := c.Get("user_id")
+	database.DB.Create(&models.AuditLog{
+		UserID:    adminID.(uint),
+		Action:    "account_blocked_manual",
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+		Details:   fmt.Sprintf("حظر المستخدم يدوياً: %s - السبب: %s", user.Username, body.Reason),
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "تم حظر المستخدم بنجاح"})
+}
+
+// === Security: IP Management ===
+
+func (h *AdminHandler) ListBlockedIPs(c *gin.Context) {
+	var ips []models.BlockedIP
+	database.DB.Preload("Admin").Order("created_at DESC").Find(&ips)
+	c.JSON(http.StatusOK, gin.H{"blocked_ips": ips})
+}
+
+func (h *AdminHandler) BlockIP(c *gin.Context) {
+	var body struct {
+		IPAddress string `json:"ip_address" binding:"required"`
+		Reason    string `json:"reason"`
+		Duration  int    `json:"duration"` // hours, 0 = permanent
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "عنوان IP مطلوب"})
+		return
+	}
+
+	adminID, _ := c.Get("user_id")
+	blockedIP := models.BlockedIP{
+		IPAddress: body.IPAddress,
+		Reason:    body.Reason,
+		BlockedBy: adminID.(uint),
+	}
+	if body.Duration > 0 {
+		expires := time.Now().Add(time.Duration(body.Duration) * time.Hour)
+		blockedIP.ExpiresAt = &expires
+	}
+
+	database.DB.Where("ip_address = ?", body.IPAddress).Delete(&models.BlockedIP{})
+	database.DB.Create(&blockedIP)
+
+	database.DB.Create(&models.AuditLog{
+		UserID:    adminID.(uint),
+		Action:    "ip_blocked",
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+		Details:   fmt.Sprintf("حظر عنوان IP: %s - السبب: %s", body.IPAddress, body.Reason),
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "تم حظر العنوان بنجاح"})
+}
+
+func (h *AdminHandler) UnblockIP(c *gin.Context) {
+	ip := c.Param("ip")
+	database.DB.Where("ip_address = ?", ip).Delete(&models.BlockedIP{})
+
+	adminID, _ := c.Get("user_id")
+	database.DB.Create(&models.AuditLog{
+		UserID:    adminID.(uint),
+		Action:    "ip_unblocked",
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+		Details:   fmt.Sprintf("إلغاء حظر عنوان IP: %s", ip),
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "تم إلغاء حظر العنوان بنجاح"})
+}
+
+// === Security: Active Sessions ===
+
+func (h *AdminHandler) ListAllSessions(c *gin.Context) {
+	var sessions []models.ActiveSession
+	database.DB.Preload("User").Where("expires_at > ?", time.Now()).
+		Order("created_at DESC").Find(&sessions)
+	c.JSON(http.StatusOK, gin.H{"sessions": sessions})
+}
+
+func (h *AdminHandler) TerminateSession(c *gin.Context) {
+	id := c.Param("id")
+	database.DB.Delete(&models.ActiveSession{}, id)
+
+	adminID, _ := c.Get("user_id")
+	database.DB.Create(&models.AuditLog{
+		UserID:    adminID.(uint),
+		Action:    "session_terminated",
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+		Details:   fmt.Sprintf("إنهاء جلسة رقم: %s", id),
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "تم إنهاء الجلسة بنجاح"})
+}
+
+func (h *AdminHandler) TerminateUserSessions(c *gin.Context) {
+	id := c.Param("id")
+	database.DB.Where("user_id = ?", id).Delete(&models.ActiveSession{})
+
+	adminID, _ := c.Get("user_id")
+	database.DB.Create(&models.AuditLog{
+		UserID:    adminID.(uint),
+		Action:    "all_sessions_terminated",
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+		Details:   fmt.Sprintf("إنهاء جميع جلسات المستخدم ID: %s", id),
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "تم إنهاء جميع الجلسات بنجاح"})
+}
+
+// === Security: Dashboard Stats ===
+
+func (h *AdminHandler) SecurityOverview(c *gin.Context) {
+	now := time.Now()
+	last24h := now.Add(-24 * time.Hour)
+	lastWeek := now.Add(-7 * 24 * time.Hour)
+
+	var totalUsers int64
+	database.DB.Model(&models.User{}).Count(&totalUsers)
+
+	var blockedUsers int64
+	database.DB.Model(&models.User{}).Where("is_blocked = ?", true).Count(&blockedUsers)
+
+	var blockedIPs int64
+	database.DB.Model(&models.BlockedIP{}).Where("expires_at IS NULL OR expires_at > ?", now).Count(&blockedIPs)
+
+	var activeSessions int64
+	database.DB.Model(&models.ActiveSession{}).Where("expires_at > ?", now).Count(&activeSessions)
+
+	var loginSuccess24h int64
+	database.DB.Model(&models.LoginAttempt{}).Where("success = ? AND created_at > ?", true, last24h).Count(&loginSuccess24h)
+
+	var loginFailed24h int64
+	database.DB.Model(&models.LoginAttempt{}).Where("success = ? AND created_at > ?", false, last24h).Count(&loginFailed24h)
+
+	var loginFailedWeek int64
+	database.DB.Model(&models.LoginAttempt{}).Where("success = ? AND created_at > ?", false, lastWeek).Count(&loginFailedWeek)
+
+	var passwordChanges24h int64
+	database.DB.Model(&models.AuditLog{}).Where("action = ? AND created_at > ?", "password_change", last24h).Count(&passwordChanges24h)
+
+	// Top failed IPs
+	type IPStat struct {
+		IPAddress string `json:"ip_address"`
+		Count     int64  `json:"count"`
+	}
+	var topFailedIPs []IPStat
+	database.DB.Model(&models.LoginAttempt{}).
+		Select("ip_address, COUNT(*) as count").
+		Where("success = ? AND created_at > ?", false, lastWeek).
+		Group("ip_address").
+		Order("count DESC").
+		Limit(10).
+		Find(&topFailedIPs)
+
+	// Top failed usernames
+	type UsernameStat struct {
+		Username string `json:"username"`
+		Count    int64  `json:"count"`
+	}
+	var topFailedUsers []UsernameStat
+	database.DB.Model(&models.LoginAttempt{}).
+		Select("username, COUNT(*) as count").
+		Where("success = ? AND created_at > ?", false, lastWeek).
+		Group("username").
+		Order("count DESC").
+		Limit(10).
+		Find(&topFailedUsers)
+
+	// Recent blocked accounts
+	var recentBlocked []models.User
+	database.DB.Where("is_blocked = ?", true).
+		Order("updated_at DESC").
+		Limit(10).
+		Find(&recentBlocked)
+
+	c.JSON(http.StatusOK, gin.H{
+		"total_users":         totalUsers,
+		"blocked_users":       blockedUsers,
+		"blocked_ips":         blockedIPs,
+		"active_sessions":     activeSessions,
+		"login_success_24h":   loginSuccess24h,
+		"login_failed_24h":    loginFailed24h,
+		"login_failed_week":   loginFailedWeek,
+		"password_changes_24h": passwordChanges24h,
+		"top_failed_ips":      topFailedIPs,
+		"top_failed_users":    topFailedUsers,
+		"recent_blocked":      recentBlocked,
 	})
 }
 
