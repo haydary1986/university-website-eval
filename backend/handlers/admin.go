@@ -529,7 +529,28 @@ func (h *AdminHandler) ListSubmissions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"submissions": submissions})
+	// Flatten for frontend
+	type FlatSubmission struct {
+		models.Submission
+		UniversityName   string `json:"university_name"`
+		UniversityType   string `json:"university_type"`
+		AcademicYearName string `json:"academic_year_name"`
+	}
+
+	var flat []FlatSubmission
+	for _, s := range submissions {
+		fs := FlatSubmission{Submission: s}
+		if s.University != nil {
+			fs.UniversityName = s.University.Name
+			fs.UniversityType = s.University.Type
+		}
+		if s.AcademicYear != nil {
+			fs.AcademicYearName = s.AcademicYear.Name
+		}
+		flat = append(flat, fs)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"submissions": flat})
 }
 
 func (h *AdminHandler) GetSubmission(c *gin.Context) {
@@ -664,8 +685,9 @@ func (h *AdminHandler) RejectSubmission(c *gin.Context) {
 	now := time.Now()
 	submission.Status = "rejected"
 	submission.ReviewedAt = &now
+	submission.RejectReason = body.Reason
 
 	database.DB.Save(&submission)
 
-	c.JSON(http.StatusOK, gin.H{"submission": submission, "message": "Submission rejected", "reason": body.Reason})
+	c.JSON(http.StatusOK, gin.H{"submission": submission, "message": "تم رفض التقديم"})
 }

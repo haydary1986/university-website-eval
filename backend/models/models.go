@@ -120,12 +120,13 @@ type University struct {
 }
 
 type AcademicYear struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	Name      string    `json:"name" gorm:"not null;uniqueIndex"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
-	IsActive  bool      `json:"is_active" gorm:"default:false"`
-	CreatedAt time.Time `json:"created_at"`
+	ID                 uint       `json:"id" gorm:"primaryKey"`
+	Name               string     `json:"name" gorm:"not null;uniqueIndex"`
+	StartDate          time.Time  `json:"start_date"`
+	EndDate            time.Time  `json:"end_date"`
+	SubmissionDeadline *time.Time `json:"submission_deadline"`
+	IsActive           bool       `json:"is_active" gorm:"default:false"`
+	CreatedAt          time.Time  `json:"created_at"`
 }
 
 type Category struct {
@@ -150,9 +151,9 @@ type Criteria struct {
 
 type Submission struct {
 	ID               uint             `json:"id" gorm:"primaryKey"`
-	UniversityID     uint             `json:"university_id" gorm:"not null"`
+	UniversityID     uint             `json:"university_id" gorm:"not null;index"`
 	University       *University      `json:"university,omitempty" gorm:"foreignKey:UniversityID"`
-	AcademicYearID   uint             `json:"academic_year_id" gorm:"not null"`
+	AcademicYearID   uint             `json:"academic_year_id" gorm:"not null;index"`
 	AcademicYear     *AcademicYear    `json:"academic_year,omitempty" gorm:"foreignKey:AcademicYearID"`
 	Version          int              `json:"version" gorm:"not null;default:1"`
 	Status           string           `json:"status" gorm:"not null;default:'draft'"` // draft, submitted, under_review, approved, rejected
@@ -162,6 +163,7 @@ type Submission struct {
 	SubmittedAt      *time.Time       `json:"submitted_at"`
 	ReviewedAt       *time.Time       `json:"reviewed_at"`
 	TotalScore       float64          `json:"total_score" gorm:"default:0"`
+	RejectReason     string           `json:"reject_reason"`
 	Items            []SubmissionItem `json:"items,omitempty" gorm:"foreignKey:SubmissionID"`
 	Reviews          []Review         `json:"reviews,omitempty" gorm:"foreignKey:SubmissionID"`
 	CreatedAt        time.Time        `json:"created_at"`
@@ -170,8 +172,8 @@ type Submission struct {
 
 type SubmissionItem struct {
 	ID           uint      `json:"id" gorm:"primaryKey"`
-	SubmissionID uint      `json:"submission_id" gorm:"not null"`
-	CriteriaID   uint      `json:"criteria_id" gorm:"not null"`
+	SubmissionID uint      `json:"submission_id" gorm:"not null;index"`
+	CriteriaID   uint      `json:"criteria_id" gorm:"not null;index"`
 	Criteria     *Criteria `json:"criteria,omitempty" gorm:"foreignKey:CriteriaID"`
 	Evidence     string    `json:"evidence"`
 	EvidenceFile string    `json:"evidence_file"`
@@ -263,10 +265,11 @@ type AssignCategoriesRequest struct {
 }
 
 type AcademicYearRequest struct {
-	Name      string `json:"name" binding:"required"`
-	StartDate string `json:"start_date" binding:"required"`
-	EndDate   string `json:"end_date" binding:"required"`
-	IsActive  bool   `json:"is_active"`
+	Name               string `json:"name" binding:"required"`
+	StartDate          string `json:"start_date" binding:"required"`
+	EndDate            string `json:"end_date" binding:"required"`
+	SubmissionDeadline string `json:"submission_deadline"`
+	IsActive           bool   `json:"is_active"`
 }
 
 type AIAnalysisRequest struct {
@@ -298,18 +301,24 @@ type SystemSettingsResponse struct {
 	DeepSeekURL     string `json:"deepseek_url"`
 	GeminiAPIKey    string `json:"gemini_api_key"`
 	GeminiURL       string `json:"gemini_url"`
-	HasDeepSeekKey  bool   `json:"has_deepseek_key"`
-	HasGeminiKey    bool   `json:"has_gemini_key"`
+	HasDeepSeekKey       bool   `json:"has_deepseek_key"`
+	HasGeminiKey         bool   `json:"has_gemini_key"`
+	MaxLoginAttempts     string `json:"max_login_attempts"`
+	BlockDurationMinutes string `json:"block_duration_minutes"`
+	MaxFileSizeMB        string `json:"max_file_size_mb"`
 }
 
 type UpdateSettingsRequest struct {
-	SiteTitle       *string `json:"site_title"`
-	SiteDescription *string `json:"site_description"`
-	SubmissionsOpen *bool   `json:"submissions_open"`
-	DeepSeekAPIKey  *string `json:"deepseek_api_key"`
-	DeepSeekURL     *string `json:"deepseek_url"`
-	GeminiAPIKey    *string `json:"gemini_api_key"`
-	GeminiURL       *string `json:"gemini_url"`
+	SiteTitle            *string `json:"site_title"`
+	SiteDescription      *string `json:"site_description"`
+	SubmissionsOpen      *bool   `json:"submissions_open"`
+	DeepSeekAPIKey       *string `json:"deepseek_api_key"`
+	DeepSeekURL          *string `json:"deepseek_url"`
+	GeminiAPIKey         *string `json:"gemini_api_key"`
+	GeminiURL            *string `json:"gemini_url"`
+	MaxLoginAttempts     *string `json:"max_login_attempts"`
+	BlockDurationMinutes *string `json:"block_duration_minutes"`
+	MaxFileSizeMB        *string `json:"max_file_size_mb"`
 }
 
 type TestAIRequest struct {

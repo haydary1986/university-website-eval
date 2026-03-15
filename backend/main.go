@@ -42,6 +42,7 @@ func main() {
 	statsHandler := handlers.NewStatsHandler()
 	aiHandler := handlers.NewAIHandler(aiService)
 	settingsHandler := handlers.NewSettingsHandler()
+	exportHandler := handlers.NewExportHandler()
 
 	// Setup router
 	r := gin.Default()
@@ -173,6 +174,15 @@ func main() {
 			stats.GET("/category-rankings", statsHandler.CategoryRankings)
 			stats.GET("/university-profile/:universityId", statsHandler.UniversityProfile)
 			stats.GET("/comparison/:universityId", statsHandler.Comparison)
+		}
+
+		// Export (admin only)
+		export := protected.Group("/export")
+		export.Use(middleware.RoleRequired("super_admin", "admin"))
+		{
+			export.GET("/rankings", exportHandler.ExportRankings)
+			export.GET("/category-rankings", exportHandler.ExportCategoryRankings)
+			export.GET("/submissions", exportHandler.ExportSubmissions)
 		}
 
 		// AI

@@ -89,7 +89,7 @@ export default {
   getAdminSubmission: (id) => unwrap(api.get(`/admin/submissions/${id}`), 'submission'),
   reviewSubmission: (id, data) => api.post(`/admin/submissions/${id}/review`, data),
   approveSubmission: (id) => api.put(`/admin/submissions/${id}/approve`),
-  rejectSubmission: (id) => api.put(`/admin/submissions/${id}/reject`),
+  rejectSubmission: (id, data) => api.put(`/admin/submissions/${id}/reject`, data),
 
   // Users
   getUsers: () => unwrap(api.get('/admin/users'), 'users'),
@@ -116,6 +116,11 @@ export default {
   analyzeSubmission: (id, provider) => api.post(`/ai/analyze-submission/${id}`, { provider }),
   suggestImprovements: (id, provider) => api.post(`/ai/suggest-improvements/${id}`, { provider }),
   compareUniversities: (ids, provider) => api.post('/ai/compare-universities', { university_ids: ids, provider }),
+
+  // Export
+  exportRankings: (params) => api.get('/export/rankings', { params, responseType: 'blob' }),
+  exportCategoryRankings: (params) => api.get('/export/category-rankings', { params, responseType: 'blob' }),
+  exportSubmissions: (params) => api.get('/export/submissions', { params, responseType: 'blob' }),
 
   // File upload
   uploadFile: (file) => {

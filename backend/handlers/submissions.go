@@ -51,7 +51,28 @@ func (h *SubmissionHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"submissions": submissions})
+	// Flatten for frontend
+	type FlatSubmission struct {
+		models.Submission
+		UniversityName   string `json:"university_name"`
+		UniversityType   string `json:"university_type"`
+		AcademicYearName string `json:"academic_year_name"`
+	}
+
+	var flat []FlatSubmission
+	for _, s := range submissions {
+		fs := FlatSubmission{Submission: s}
+		if s.University != nil {
+			fs.UniversityName = s.University.Name
+			fs.UniversityType = s.University.Type
+		}
+		if s.AcademicYear != nil {
+			fs.AcademicYearName = s.AcademicYear.Name
+		}
+		flat = append(flat, fs)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"submissions": flat})
 }
 
 func (h *SubmissionHandler) Get(c *gin.Context) {
@@ -322,6 +343,17 @@ func (h *SubmissionHandler) UploadFile(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No file uploaded"})
+		return
+	}
+
+	// Limit file size from settings
+	maxMB, _ := strconv.Atoi(getSetting("max_file_size_mb", "10"))
+	if maxMB < 1 {
+		maxMB = 10
+	}
+	maxSize := int64(maxMB) << 20
+	if file.Size > maxSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("حجم الملف يتجاوز الحد المسموح (%d ميغابايت)", maxMB)})
 		return
 	}
 

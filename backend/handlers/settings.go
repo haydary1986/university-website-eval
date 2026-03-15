@@ -43,15 +43,18 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 	gKey := getSetting("gemini_api_key", "")
 
 	resp := models.SystemSettingsResponse{
-		SiteTitle:       getSetting("site_title", "نظام تقييم جودة المواقع الالكترونية الجامعية"),
-		SiteDescription: getSetting("site_description", "نظام تقييم جودة المواقع الالكترونية للجامعات العراقية - وزارة التعليم العالي والبحث العلمي"),
-		SubmissionsOpen: getSetting("submissions_open", "true") == "true",
-		DeepSeekAPIKey:  maskKey(dsKey),
-		DeepSeekURL:     getSetting("deepseek_url", "https://api.deepseek.com/v1/chat/completions"),
-		GeminiAPIKey:    maskKey(gKey),
-		GeminiURL:       getSetting("gemini_url", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"),
-		HasDeepSeekKey:  dsKey != "",
-		HasGeminiKey:    gKey != "",
+		SiteTitle:             getSetting("site_title", "نظام تقييم جودة المواقع الالكترونية الجامعية"),
+		SiteDescription:       getSetting("site_description", "نظام تقييم جودة المواقع الالكترونية للجامعات العراقية - وزارة التعليم العالي والبحث العلمي"),
+		SubmissionsOpen:       getSetting("submissions_open", "true") == "true",
+		DeepSeekAPIKey:        maskKey(dsKey),
+		DeepSeekURL:           getSetting("deepseek_url", "https://api.deepseek.com/v1/chat/completions"),
+		GeminiAPIKey:          maskKey(gKey),
+		GeminiURL:             getSetting("gemini_url", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"),
+		HasDeepSeekKey:        dsKey != "",
+		HasGeminiKey:          gKey != "",
+		MaxLoginAttempts:      getSetting("max_login_attempts", "5"),
+		BlockDurationMinutes:  getSetting("block_duration_minutes", "30"),
+		MaxFileSizeMB:         getSetting("max_file_size_mb", "10"),
 	}
 	c.JSON(http.StatusOK, gin.H{"settings": resp})
 }
@@ -97,6 +100,15 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	}
 	if req.GeminiURL != nil {
 		setSetting("gemini_url", *req.GeminiURL)
+	}
+	if req.MaxLoginAttempts != nil {
+		setSetting("max_login_attempts", *req.MaxLoginAttempts)
+	}
+	if req.BlockDurationMinutes != nil {
+		setSetting("block_duration_minutes", *req.BlockDurationMinutes)
+	}
+	if req.MaxFileSizeMB != nil {
+		setSetting("max_file_size_mb", *req.MaxFileSizeMB)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "تم تحديث الإعدادات بنجاح"})

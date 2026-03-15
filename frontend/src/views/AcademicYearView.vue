@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="d-flex align-center mb-6">
-      <h1 class="text-h4 font-weight-bold text-primary">
+      <h1 class="text-h5 text-md-h4 font-weight-bold text-primary">
         <v-icon icon="mdi-calendar-range" class="ml-2" />
         السنوات الدراسية
       </h1>
@@ -15,6 +15,14 @@
           <v-chip :color="item.is_active ? 'success' : 'grey'" size="small">
             {{ item.is_active ? 'فعالة' : 'غير فعالة' }}
           </v-chip>
+        </template>
+        <template v-slot:item.submission_deadline="{ item }">
+          <template v-if="item.submission_deadline">
+            <v-chip :color="isDeadlinePassed(item.submission_deadline) ? 'error' : 'info'" size="small">
+              {{ formatDate(item.submission_deadline) }}
+            </v-chip>
+          </template>
+          <span v-else class="text-grey">—</span>
         </template>
         <template v-slot:item.actions="{ item }">
           <v-btn icon variant="text" size="small" @click="openDialog(item)">
@@ -34,6 +42,7 @@
             <v-text-field v-model="formData.name" label="الاسم (مثال: 2025-2026)" :rules="[v => !!v || 'مطلوب']" class="mb-3" />
             <v-text-field v-model="formData.start_date" label="تاريخ البدء" type="date" class="mb-3" />
             <v-text-field v-model="formData.end_date" label="تاريخ الانتهاء" type="date" class="mb-3" />
+            <v-text-field v-model="formData.submission_deadline" label="آخر موعد للتقديم" type="date" class="mb-3" hint="بعد هذا التاريخ لن تتمكن الجامعات من التقديم لهذه السنة" persistent-hint />
             <v-switch v-model="formData.is_active" label="فعالة" color="success" />
           </v-form>
         </v-card-text>
@@ -59,24 +68,40 @@ const editId = ref(null)
 const years = ref([])
 const yearForm = ref(null)
 
-const formData = reactive({ name: '', start_date: '', end_date: '', is_active: false })
+const formData = reactive({ name: '', start_date: '', end_date: '', submission_deadline: '', is_active: false })
 
 const headers = [
   { title: 'الاسم', key: 'name', sortable: true },
   { title: 'تاريخ البدء', key: 'start_date' },
   { title: 'تاريخ الانتهاء', key: 'end_date' },
+  { title: 'آخر موعد للتقديم', key: 'submission_deadline' },
   { title: 'الحالة', key: 'is_active', sortable: true },
   { title: 'الإجراءات', key: 'actions', sortable: false },
 ]
+
+function formatDate(d) {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('ar-IQ')
+}
+
+function isDeadlinePassed(d) {
+  return new Date(d) < new Date()
+}
 
 function openDialog(year) {
   if (year) {
     editMode.value = true
     editId.value = year.id
-    Object.assign(formData, { name: year.name, start_date: year.start_date, end_date: year.end_date, is_active: year.is_active })
+    Object.assign(formData, {
+      name: year.name,
+      start_date: year.start_date?.substring(0, 10),
+      end_date: year.end_date?.substring(0, 10),
+      submission_deadline: year.submission_deadline?.substring(0, 10) || '',
+      is_active: year.is_active,
+    })
   } else {
     editMode.value = false
-    Object.assign(formData, { name: '', start_date: '', end_date: '', is_active: false })
+    Object.assign(formData, { name: '', start_date: '', end_date: '', submission_deadline: '', is_active: false })
   }
   dialog.value = true
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"website-eval-system/config"
@@ -17,10 +18,26 @@ import (
 )
 
 const (
-	maxFailedAttempts    = 5
-	blockDurationMinutes = 30
-	maxFailedFromIP      = 20 // block IP after 20 failed attempts in 1 hour
+	maxFailedFromIP = 20 // block IP after 20 failed attempts in 1 hour
 )
+
+func getMaxFailedAttempts() int {
+	v := getSetting("max_login_attempts", "5")
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		return 5
+	}
+	return n
+}
+
+func getBlockDurationMinutes() int {
+	v := getSetting("block_duration_minutes", "30")
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		return 30
+	}
+	return n
+}
 
 type AuthHandler struct {
 	Config *config.Config
@@ -116,8 +133,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		}
 
 		// Block after max failed attempts
-		if newFailCount >= maxFailedAttempts {
-			blockUntil := now.Add(time.Duration(blockDurationMinutes) * time.Minute)
+		maxAttempts := getMaxFailedAttempts()
+		blockMins := getBlockDurationMinutes()
+		if newFailCount >= maxAttempts {
+			blockUntil := now.Add(time.Duration(blockMins) * time.Minute)
 			updates["is_blocked"] = true
 			updates["blocked_until"] = blockUntil
 
@@ -132,7 +151,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 			database.DB.Model(&user).Updates(updates)
 			c.JSON(http.StatusForbidden, gin.H{
-				"error":              fmt.Sprintf("تم حظر الحساب لمدة %d دقيقة بسبب %d محاولات فاشلة", blockDurationMinutes, maxFailedAttempts),
+				"error":              fmt.Sprintf("تم حظر الحساب لمدة %d دقيقة بسبب %d محاولات فاشلة", blockMins, maxAttempts),
 				"blocked":            true,
 				"remaining_attempts": 0,
 			})
@@ -147,10 +166,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			Action:    "login_failed",
 			IPAddress: ip,
 			UserAgent: ua,
-			Details:   fmt.Sprintf("محاولة دخول فاشلة (%d من %d)", newFailCount, maxFailedAttempts),
+			Details:   fmt.Sprintf("محاولة دخول فاشلة (%d من %d)", newFailCount, maxAttempts),
 		})
 
-		remaining := maxFailedAttempts - newFailCount
+		remaining := maxAttempts - newFailCount
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":              "اسم المستخدم أو كلمة المرور غير صحيحة",
 			"remaining_attempts": remaining,

@@ -171,6 +171,59 @@
           </v-btn>
         </v-card-actions>
       </v-card>
+      <!-- Security Settings -->
+      <v-card class="mb-6" rounded="lg">
+        <v-card-title class="d-flex align-center">
+          <v-icon class="ml-2" color="error">mdi-shield-lock</v-icon>
+          إعدادات الأمان
+        </v-card-title>
+        <v-card-text>
+          <v-row>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model.number="settings.max_login_attempts"
+                label="الحد الأقصى لمحاولات الدخول"
+                variant="outlined"
+                density="comfortable"
+                type="number"
+                min="1"
+                hint="عدد المحاولات قبل حظر الحساب"
+                persistent-hint
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model.number="settings.block_duration_minutes"
+                label="مدة الحظر (بالدقائق)"
+                variant="outlined"
+                density="comfortable"
+                type="number"
+                min="1"
+                hint="مدة حظر الحساب بعد تجاوز المحاولات"
+                persistent-hint
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model.number="settings.max_file_size_mb"
+                label="الحد الأقصى لحجم الملفات (ميغابايت)"
+                variant="outlined"
+                density="comfortable"
+                type="number"
+                min="1"
+                hint="أقصى حجم للملفات المرفوعة"
+                persistent-hint
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-btn color="error" variant="flat" :loading="saving" @click="saveSettings('security')">
+            <v-icon start>mdi-content-save</v-icon>
+            حفظ إعدادات الأمان
+          </v-btn>
+        </v-card-actions>
+      </v-card>
     </template>
   </div>
 </template>
@@ -199,6 +252,9 @@ const settings = ref({
   gemini_url: '',
   has_deepseek_key: false,
   has_gemini_key: false,
+  max_login_attempts: 5,
+  block_duration_minutes: 30,
+  max_file_size_mb: 10,
 })
 
 async function loadSettings() {
@@ -241,6 +297,12 @@ async function saveSettings(section) {
       }
       if (newGeminiKey.value) {
         payload.gemini_api_key = newGeminiKey.value
+      }
+    } else if (section === 'security') {
+      payload = {
+        max_login_attempts: String(settings.value.max_login_attempts),
+        block_duration_minutes: String(settings.value.block_duration_minutes),
+        max_file_size_mb: String(settings.value.max_file_size_mb),
       }
     }
 

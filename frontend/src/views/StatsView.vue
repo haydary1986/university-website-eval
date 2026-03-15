@@ -36,6 +36,28 @@
 
     <!-- Tabs -->
     <v-card rounded="xl">
+      <div class="d-flex align-center pa-3">
+        <v-spacer />
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn v-bind="props" color="success" variant="tonal" size="small" prepend-icon="mdi-download">
+              تصدير CSV
+            </v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-item @click="exportData('rankings')">
+              <v-list-item-title>تصدير التصنيف العام</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="exportData('category-rankings')">
+              <v-list-item-title>تصدير تصنيف الفقرات</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="exportData('submissions')">
+              <v-list-item-title>تصدير التقديمات</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+      </div>
+
       <v-tabs v-model="activeTab" color="primary" grow>
         <v-tab value="overall"><v-icon class="ml-1">mdi-trophy</v-icon> التصنيف العام</v-tab>
         <v-tab value="categories"><v-icon class="ml-1">mdi-format-list-numbered</v-icon> تصنيف حسب الفقرات</v-tab>
@@ -443,6 +465,27 @@ async function loadProfile() {
   } catch (e) {
     console.error(e)
     profile.value = null
+  }
+}
+
+async function exportData(type_) {
+  const params = {}
+  if (selectedYear.value) params.academic_year_id = selectedYear.value
+
+  try {
+    let res
+    if (type_ === 'rankings') res = await api.exportRankings(params)
+    else if (type_ === 'category-rankings') res = await api.exportCategoryRankings(params)
+    else res = await api.exportSubmissions(params)
+
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${type_}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('Export failed', e)
   }
 }
 

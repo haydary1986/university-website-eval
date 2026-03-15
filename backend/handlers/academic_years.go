@@ -51,6 +51,13 @@ func (h *AcademicYearHandler) Create(c *gin.Context) {
 		IsActive:  req.IsActive,
 	}
 
+	if req.SubmissionDeadline != "" {
+		dl, err := time.Parse("2006-01-02", req.SubmissionDeadline)
+		if err == nil {
+			year.SubmissionDeadline = &dl
+		}
+	}
+
 	// If setting as active, deactivate others
 	if req.IsActive {
 		database.DB.Model(&models.AcademicYear{}).Where("is_active = ?", true).Update("is_active", false)
@@ -100,6 +107,15 @@ func (h *AcademicYearHandler) Update(c *gin.Context) {
 	year.StartDate = startDate
 	year.EndDate = endDate
 	year.IsActive = req.IsActive
+
+	if req.SubmissionDeadline != "" {
+		dl, err := time.Parse("2006-01-02", req.SubmissionDeadline)
+		if err == nil {
+			year.SubmissionDeadline = &dl
+		}
+	} else {
+		year.SubmissionDeadline = nil
+	}
 
 	database.DB.Save(&year)
 
