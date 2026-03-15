@@ -379,27 +379,42 @@ func seedUniversities() {
 }
 
 func seedUniversityUsers() {
-	defaultPassword := "University@2024"
+	defaultPassword := "Mohe@2025"
 	hash, _ := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 
 	var universities []models.University
 	DB.Find(&universities)
 
 	created := 0
+	usedUsernames := make(map[string]bool)
+
 	for _, uni := range universities {
-		// Extract domain from website URL for email
-		email := "info@university.edu.iq"
+		// Extract domain from website URL for username and email
+		domain := ""
 		if uni.Website != "" {
 			parsed, err := url.Parse(uni.Website)
 			if err == nil && parsed.Host != "" {
-				host := parsed.Host
-				host = strings.TrimPrefix(host, "www.")
-				email = fmt.Sprintf("info@%s", host)
+				domain = parsed.Host
+				domain = strings.TrimPrefix(domain, "www.")
 			}
 		}
 
-		// Generate username from university ID
-		username := fmt.Sprintf("uni_%d", uni.ID)
+		// Username = domain (e.g. uoturath.edu.iq)
+		username := domain
+		if username == "" {
+			username = fmt.Sprintf("uni_%d", uni.ID)
+		}
+
+		// Handle duplicate domains
+		if usedUsernames[username] {
+			username = fmt.Sprintf("%s_%d", username, uni.ID)
+		}
+		usedUsernames[username] = true
+
+		email := fmt.Sprintf("info@%s", domain)
+		if domain == "" {
+			email = fmt.Sprintf("uni_%d@university.edu.iq", uni.ID)
+		}
 
 		user := models.User{
 			Username:           username,
@@ -422,5 +437,5 @@ func seedUniversityUsers() {
 		created++
 	}
 
-	log.Printf("Created %d university user accounts (default password: %s)", created, defaultPassword)
+	log.Printf("Created %d university user accounts (username=domain, default password: %s)", created, defaultPassword)
 }
