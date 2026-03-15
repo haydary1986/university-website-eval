@@ -48,6 +48,9 @@ func Seed() {
 	seedUniversityUsers()
 
 	log.Println("Database seeded successfully!")
+
+	// Always run migrations on startup
+	migrateUniversityUsernames()
 }
 
 func seedSuperAdmin() {
@@ -375,6 +378,67 @@ func seedUniversities() {
 			Website: u.Website,
 		}
 		DB.Create(&uni)
+	}
+}
+
+// migrateUniversityUsernames updates old uni_X usernames to domain-based usernames
+func migrateUniversityUsernames() {
+	var users []models.User
+	DB.Where("role = ? AND username LIKE ?", "university", "uni_%").Find(&users)
+
+	if len(users) == 0 {
+		return
+	}
+
+	log.Printf("Migrating %d university usernames to domain-based...", len(users))
+
+	defaultPassword := "Mohe@2025"
+	hash, _ := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
+	usedUsernames := make(map[string]bool)
+
+	// Collect already-migrated usernames to avoid duplicates
+	var allUsers []models.User
+	DB.Where("role = ? AND username NOT LIKE ?", "university", "uni_%").Find(&allUsers)
+	for _, u := range allUsers {
+		usedUsernames[u.Username] = true
+	}
+
+	for _, user := range users {
+		if user.UniversityID == nil {
+			continue
+		}
+
+		var uni models.University
+		if err := DB.First(&uni, *user.UniversityID).Error; err != nil {
+			continue
+		}
+
+		domain := ""
+		if uni.Website != "" {
+			parsed, err := url.Parse(uni.Website)
+			if err == nil && parsed.Host != "" {
+				domain = parsed.Host
+				domain = strings.TrimPrefix(domain, "www.")
+			}
+		}
+
+		newUsername := domain
+		if newUsername == "" {
+			continue // keep uni_X if no website
+		}
+
+		if usedUsernames[newUsername] {
+			newUsername = fmt.Sprintf("%s_%d", newUsername, uni.ID)
+		}
+		usedUsernames[newUsername] = true
+
+		DB.Model(&user).Updates(map[string]interface{}{
+			"username":             newUsername,
+			"password":             string(hash),
+			"must_change_password": true,
+		})
+
+		log.Printf("  Migrated: %s -> %s", user.Username, newUsername)
 	}
 }
 
