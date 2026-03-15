@@ -69,6 +69,12 @@ export default {
   // Categories
   getCategories: () => unwrap(api.get('/categories'), 'categories'),
   getCategory: (id) => unwrap(api.get(`/categories/${id}`), 'category'),
+  createCategory: (data) => unwrap(api.post('/admin/categories', data), 'category'),
+  updateCategory: (id, data) => unwrap(api.put(`/admin/categories/${id}`, data), 'category'),
+  deleteCategory: (id) => api.delete(`/admin/categories/${id}`),
+  createCriteria: (categoryId, data) => unwrap(api.post(`/admin/categories/${categoryId}/criteria`, data), 'criteria'),
+  updateCriteria: (id, data) => unwrap(api.put(`/admin/criteria/${id}`, data), 'criteria'),
+  deleteCriteria: (id) => api.delete(`/admin/criteria/${id}`),
 
   // Submissions
   getSubmissions: (params) => unwrap(api.get('/submissions', { params }), 'submissions'),

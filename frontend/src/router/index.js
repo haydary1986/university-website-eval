@@ -18,6 +18,7 @@ const routes = [
       { path: 'admin/review', name: 'admin-review', component: () => import('../views/AdminReviewView.vue'), meta: { adminOnly: true } },
       { path: 'admin/users', name: 'admin-users', component: () => import('../views/UserManagementView.vue'), meta: { superAdmin: true } },
       { path: 'admin/academic-years', name: 'academic-years', component: () => import('../views/AcademicYearView.vue'), meta: { superAdmin: true } },
+      { path: 'admin/categories', name: 'admin-categories', component: () => import('../views/CategoryManagementView.vue'), meta: { superAdmin: true } },
       { path: 'admin/audit-logs', name: 'audit-logs', component: () => import('../views/AuditLogView.vue'), meta: { superAdmin: true } },
       { path: 'admin/security', name: 'security', component: () => import('../views/SecurityView.vue'), meta: { superAdmin: true } },
       { path: 'admin/settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { superAdmin: true } },

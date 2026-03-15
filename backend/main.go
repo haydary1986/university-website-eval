@@ -127,6 +127,14 @@ func main() {
 			admin.DELETE("/users/:id", middleware.RoleRequired("super_admin"), adminHandler.DeleteUser)
 			admin.PUT("/users/:id/assign-categories", middleware.RoleRequired("super_admin"), adminHandler.AssignCategories)
 
+			// Category management (super_admin only)
+			admin.POST("/categories", middleware.RoleRequired("super_admin"), categoryHandler.Create)
+			admin.PUT("/categories/:id", middleware.RoleRequired("super_admin"), categoryHandler.Update)
+			admin.DELETE("/categories/:id", middleware.RoleRequired("super_admin"), categoryHandler.Delete)
+			admin.POST("/categories/:id/criteria", middleware.RoleRequired("super_admin"), categoryHandler.CreateCriteria)
+			admin.PUT("/criteria/:id", middleware.RoleRequired("super_admin"), categoryHandler.UpdateCriteria)
+			admin.DELETE("/criteria/:id", middleware.RoleRequired("super_admin"), categoryHandler.DeleteCriteria)
+
 			// Audit logs (super_admin only)
 			admin.GET("/audit-logs", middleware.RoleRequired("super_admin"), adminHandler.ListAuditLogs)
 
